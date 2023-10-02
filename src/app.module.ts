@@ -3,13 +3,16 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PostsModule } from './posts/posts.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+// import * as Joi from 'joi';
 import * as Joi from 'joi';
 import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './users/users.module';
-import { UsersService } from './users/users.service';
+import { AuthenticationModule } from './authentication/authentication.module';
+import CategoriesModule from './categories/categories.module';
+import { DatabaseService } from './database/database.service';
 @Module({
+  controllers: [AppController],
   imports: [
-    PostsModule,
     ConfigModule.forRoot({
       validationSchema: Joi.object({
         POSTGRES_HOST: Joi.string().required(),
@@ -18,13 +21,16 @@ import { UsersService } from './users/users.service';
         POSTGRES_PASSWORD: Joi.string().required(),
         POSTGRES_DB: Joi.string().required(),
         PORT: Joi.number(),
+        JWT_SECRET: Joi.string().required(),
+        JWT_EXPIRATION_TIME: Joi.string().required(),
       }),
     }),
     DatabaseModule,
+    PostsModule,
     UsersModule,
+    AuthenticationModule,
+    CategoriesModule,
   ],
-  exports: [UsersService],
-  controllers: [],
-  providers: [],
+  providers: [AppService],
 })
 export class AppModule {}

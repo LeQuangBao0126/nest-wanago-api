@@ -1,17 +1,26 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import User from './user.entity';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
+
 import CreateUserDto from './dto/createUser.dto';
+
+import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectRepository(User) private usersRepository: Repository<User>,
+    private databaseService: DatabaseService, //@Inject() private databaseService: DatabaseService
   ) {}
 
   async getByEmail(email: string) {
-    const user = await this.usersRepository.findOne({ where: { email } });
+    const user = await this.databaseService
+      .getUserRepository()
+      .findOne({ where: { email } });
     if (!user) {
       throw new HttpException(
         'User with this email does not exist',
@@ -20,10 +29,31 @@ export class UsersService {
     }
     return user;
   }
-
+  async getById(id: number) {
+    const user = await this.databaseService
+      .getUserRepository()
+      .findOne({ where: { id } });
+    if (!user) {
+      throw new HttpException(
+        'User with this id does not exist',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return user;
+  }
   async create(userData: CreateUserDto) {
-    const newUser = await this.usersRepository.create(userData);
-    await this.usersRepository.save(newUser);
-    return newUser;
+    const foundUser = await this.databaseService.getUserRepository().findOneBy({
+      email: userData.email,
+    });
+    if (foundUser) {
+      throw new BadRequestException('email đã tồn tại. xin hãy tạo email khác');
+    }
+    try {
+      const newUser = this.databaseService.getUserRepository().create(userData);
+      await this.databaseService.getUserRepository().save(newUser);
+      return newUser;
+    } catch (err) {
+      throw new InternalServerErrorException('Something when wrong');
+    }
   }
 }

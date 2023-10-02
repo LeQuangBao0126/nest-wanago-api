@@ -1,41 +1,55 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreatePostDto } from './dto/createPost.dto';
 import { UpdatePostDto } from './dto/updatePost.dto';
-import { DataSource, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import Post from './post.entity';
-import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { PostNotFoundException } from './exceptions/postNotFund.exception';
+import { DatabaseService } from 'src/database/database.service';
+import User from 'src/database/entities/user.entity';
 
 @Injectable()
 export class PostsService {
-  constructor(
-    @InjectRepository(Post)
-    private postsRepository: Repository<Post>,
-  ) {}
+  constructor(private databaseService: DatabaseService) {}
   async getAllPosts() {
-    return await this.postsRepository.find();
+    return await this.databaseService.getPostRepository().find();
   }
 
-  getPostById(id: number) {
-    return this.postsRepository.findBy({ id });
+  async getPostById(id: number) {
+    const post = await this.databaseService.getPostRepository().findOne({
+      where: { id },
+      relations: ['author'],
+    });
+    if (post) {
+      return post;
+    }
+    throw new PostNotFoundException(id);
   }
 
   async replacePost(id: number, post: UpdatePostDto) {
-    await this.postsRepository.update(id, post);
-    const updatedPost = await this.postsRepository.findBy({ id });
+    await this.databaseService.getPostRepository().update(id, post);
+    const updatedPost = await this.databaseService
+      .getPostRepository()
+      .findBy({ id });
     if (updatedPost) {
       return updatedPost;
     }
     throw new HttpException('Post not found', HttpStatus.NOT_FOUND);
   }
 
-  async createPost(post: CreatePostDto) {
-    const newPost = await this.postsRepository.create(post);
-    await this.postsRepository.save(newPost);
+  async createPost(post: CreatePostDto, user: User) {
+    const newPost = this.databaseService.getPostRepository().create({
+      ...post,
+      author: user,
+    });
+    await this.databaseService.getPostRepository().save(newPost);
     return newPost;
   }
 
   async deletePost(id: number) {
-    const deleteResponse = await this.postsRepository.delete(id);
+    const deleteResponse = await this.databaseService
+      .getPostRepository()
+      .delete(id);
     if (!deleteResponse.affected) {
       throw new HttpException('Post not found', HttpStatus.NOT_FOUND);
     }

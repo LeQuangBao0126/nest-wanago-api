@@ -1,6 +1,6 @@
-import Category from 'src/categories/category.entity';
-import User from 'src/users/user.entity';
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import User from './user.entity';
+import Category from './category.entity';
 
 @Entity()
 class Post {
